@@ -20,7 +20,9 @@ func main() {
         return
     }
     renameLog := ""
-    num := 1;
+    ignoreFile := make(map[string]int)
+    num := 0;
+    L1:
     for _, f := range files {
         fileName := f.Name()
         if fileName == renLogFileName {
@@ -42,29 +44,35 @@ func main() {
                 if !ok{
                     continue
                 }
-                fmt.Printf("file: %s\n",fileName)
-                // go里面没有do while循环体，只能用这种写法
-                // int转string
-                newFileName := strconv.Itoa(num)
-                // 注意：++ 和 --只能作为语句使用，不能作为表达式
-                num++
-                newFileName += extensionName
-                // 如果新文件名被占用，就把它先修改成随机的，这种逻辑还是最省事了
-                fmt.Printf("%s 文件即将被修改成 %s", fileName, newFileName)
-                if file_exists(newFileName) {
-                    // 如果当前文件和新文件同名，直接跳过
-                    if fileName == newFileName{
-                        fmt.Printf("，因为同名，直接跳过 \n")
-                        continue
-                    }
-                    fmt.Printf("，%s 文件名已经被占用\n", newFileName)
-                    tmpFileName := GetMD5Hash(fileName)
-                    tmpFileName += extensionName
-                    os.Rename(newFileName, tmpFileName)
-                    fmt.Printf("\n把 %s 临时修改成 %s\n", fileName, tmpFileName)
+                fmt.Printf("开始处理文件: %s\n",fileName)
+                if _, ok := ignoreFile[fileName]; ok {
+                    fmt.Printf("%s 文件不做改变，直接跳过\n",fileName)
+                    continue L1
                 }
-                fmt.Printf("，转化 %s 为 %s\n", fileName, newFileName)
+                // go里面没有do while循环体，只能用这种写法
+                var newFileName string
+                L2:
+                for{
+                    // 注意：++ 和 --只能作为语句使用，不能作为表达式
+                    num++
+                    // int转string
+                    newFileName = strconv.Itoa(num)
+                    newFileName += extensionName
+                    if newFileName==fileName{
+                        ignoreFile[fileName]=1
+                        continue L1
+                    }
+                    if !file_exists(newFileName) {
+                        break L2
+                    }else{
+                        ignoreFile[newFileName]=1
+                        fmt.Printf("%s 已经被占用\n", newFileName)
+                    }
+                }
+                fmt.Printf("%s 文件即将被修改成 %s", fileName, newFileName)
+                
                 err = os.Rename(fileName, newFileName)
+                fmt.Printf("，转化 %s 为 %s\n", fileName, newFileName)
                 if err != nil {
                     fmt.Printf("Failed to rename file %s to %s, the error is %v\n", fileName, newFileName, err)
                     continue
